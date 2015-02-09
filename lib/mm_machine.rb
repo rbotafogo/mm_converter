@@ -21,27 +21,23 @@
 # ENHANCEMENTS, OR MODIFICATIONS.
 ##########################################################################################
 
-require 'fileutils'
-require 'rexml/document'
-require 'state_machine'
-require 'config'
 
-require_relative 'richtext_machine'
 
 ##########################################################################################
 #
 ##########################################################################################
 
-class MindMapMachine
+class MMMachine
   
   attr_reader :level
-
+  
   #----------------------------------------------------------------------------------------
   #
   #----------------------------------------------------------------------------------------
 
   def initialize
     @level = 0
+    @rt_machine = RichtextMachine.new
     super
   end
 
@@ -49,8 +45,40 @@ class MindMapMachine
   #
   #----------------------------------------------------------------------------------------
 
-  def set_output(out)
-    @out = out
+  def set_output(input_file, output_dir)
+    # creating a single file, but later this should not be done here
+    output = output_dir + "/" + (File.basename(input_file, '.*') + ".txt")
+    @out = File.open(output, 'w')
+  end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def start
+    ParseMM.new(input_file, output_dir, self)
+  end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def print_node
+
+    if (first_node?)
+      # FileUtils.copy_file(@template, @output)
+      # @out = File.open(@output, 'a')
+      @out.write("\n\n\\title{Planejamento}")
+      @out.write("\n\\author{Rodrigo Botafogo}")
+      @out.write("\n %\\date{} % Activate to display a given date or no date (if empty),")
+      @out.write("\n % otherwise the current date is printe")
+      @out.write("\n\\begin{document}")
+      @out.write("\n\\maketitle")
+      @out.write("\n\\end{document}")
+    end
+
+    new_section(@node_text)
+
   end
 
   #----------------------------------------------------------------------------------------
@@ -64,9 +92,13 @@ class MindMapMachine
     # :in_node.  If we were already on state :in_node, receiving a :new_node, keeps us in
     # state :in_noode.
     event :new_node do
-      transition :awaiting_node => :in_node
+      transition :awaiting_node => :first_node
+      transition :first_node => :in_node
       transition :in_node => :in_node
     end
+
+    # When entering on state :first_mode, :header will print the header if there is one
+    before_transition :on => :new_node, :do => :print_node
 
     # When receiving event :new_node, we need to move up one level in the tree.
     after_transition :on => :new_node, :do => :up_level
@@ -78,12 +110,27 @@ class MindMapMachine
 
     after_transition :on => :exit_node, :do => :down_level
 
+    # Receiving a new_attribute
     event :new_attribute do
       transition :in_node => :attribute
     end
 
     event :end_attribute do
       transition :attribute => :in_node
+    end
+
+    # Entering rich_content
+    event :rich_content do
+    end
+
+    event :end_rich_content do
+    end
+
+    # Entering rich_content
+    event :new_body do
+    end
+
+    event :end_body do
     end
 
   end
@@ -125,7 +172,8 @@ class MindMapMachine
   #----------------------------------------------------------------------------------------
 
   def new_node(attrs)
-    new_section(attrs["TEXT"])
+    @node_text = attrs["TEXT"]
+    # new_section(attrs["TEXT"])
     super
   end
 
@@ -171,151 +219,3 @@ class MindMapMachine
 
 end
 
-##########################################################################################
-#
-##########################################################################################
-
-class ParseMM
-
-  attr_reader :input
-  attr_reader :output
-  attr_reader :language
-
-  #----------------------------------------------------------------------------------------
-  #
-  #----------------------------------------------------------------------------------------
-
-  def initialize(input_file, output_file)
-
-    @input_file = input_file
-    @output_file = output_file
-
-    @source = File.new(input_file)
-    @out = File.open(output_file, 'w')
-
-    @mm_machine = MindMapMachine.new
-    @rt_machine = RichtextMachine.new
-    @mm_machine.set_output(@out)
-    @rt_machine.set_output(@out)
-    REXML::Document.parse_stream(@source, self)
-
-  end
-
-  #----------------------------------------------------------------------------------------
-  # This method is necessary do ignore parsing events that are of no interest to our
-  # parsing.
-  #----------------------------------------------------------------------------------------
-
-  def method_missing(*arg)
-  end
-  
-  #----------------------------------------------------------------------------------------
-  #
-  #----------------------------------------------------------------------------------------
-
-  def attribute(text)
-    @out.write(text)
-    @out.write("\n")
-  end
-
-  #----------------------------------------------------------------------------------------
-  #
-  #----------------------------------------------------------------------------------------
-
-  def tag_start(name, attrs)
-
-    case name
-    when "node"
-      @machine.new_node(attrs)
-    when "richcontent"
-      @machine.rich_content
-    when "attribute"
-      @machine.new_attribute(attrs)
-    when "body"
-      @machine.new_body
-    end
-    
-  end
-
-  #----------------------------------------------------------------------------------------
-  #
-  #----------------------------------------------------------------------------------------
-
-  def tag_end(name)
-
-    case name
-    when "node"
-      @machine.exit_node
-    when "richcontent"
-      @machine.end_rich_content
-    when "attribute"
-      @machine.end_attribute
-    when "body"
-      @machine.end_body
-    end
-
-  end
-  
-  #----------------------------------------------------------------------------------------
-  #
-  #----------------------------------------------------------------------------------------
-
-  def text(text)
-    if (@machine.state == "in_body" && text.strip! != '')
-      @out.write(text)
-      @out.write("\n")
-    end
-  end 
-
-end
-
-##########################################################################################
-#
-##########################################################################################
-
-class Converter
-
-  attr_reader :input
-  attr_reader :output
-  attr_reader :template
-  
-  #----------------------------------------------------------------------------------------
-  # input is a .mm file
-  # template is a tex template to use
-  # output is the output file.  If not given the output is the same as input with 
-  # extension .tex.
-  #----------------------------------------------------------------------------------------
-
-  def initialize(input, template, output = nil)
-    
-    @input = input
-    @template = template
-    output_dir = File.dirname(input)
-    @output = output_dir + "/" + ((output)? output : File.basename(input, '.*') + ".tex")
-
-  end
-
-  #----------------------------------------------------------------------------------------
-  #
-  #----------------------------------------------------------------------------------------
-
-  def header
-    FileUtils.copy_file(@template, @output)
-    @dest = File.open(@output, 'a')
-    @dest.write("\n\n\\title{Planejamento}")
-    @dest.write("\n\\author{Rodrigo Botafogo}")
-    @dest.write("\n %\\date{} % Activate to display a given date or no date (if empty),")
-    @dest.write("\n % otherwise the current date is printe")
-    @dest.write("\n\\begin{document}")
-    @dest.write("\n\\maketitle")
-
-    @dest.write("\n\\end{document}")
-    ParseMM.new(@input, @output)
-  end
-
-end
-
-conv = Converter.new("../example/EBS.mm", "../latex_templates/portugues.tex")
-conv.header
-
-# ParseFreemind.new("EBS.mm", "ebs.tex")
