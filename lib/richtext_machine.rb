@@ -205,4 +205,4 @@ class ParseRichtext
 
 end
 
-ParseRichtext.new("example/equipe.mm", "example/equipe_rich.tex")
+# ParseRichtext.new("example/equipe.mm", "example/equipe_rich.tex")

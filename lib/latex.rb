@@ -26,6 +26,8 @@ require 'rexml/document'
 require 'state_machine'
 require 'config'
 
+require_relative 'richtext_machine'
+
 ##########################################################################################
 #
 ##########################################################################################
@@ -288,7 +290,8 @@ class Converter
     
     @input = input
     @template = template
-    @output = (output)? output : File.basename(input, '.*') + ".tex"
+    output_dir = File.dirname(input)
+    @output = output_dir + "/" + ((output)? output : File.basename(input, '.*') + ".tex")
 
   end
 
@@ -297,7 +300,7 @@ class Converter
   #----------------------------------------------------------------------------------------
 
   def header
-    FileUtils.cp(@template, @output)
+    FileUtils.copy_file(@template, @output)
     @dest = File.open(@output, 'a')
     @dest.write("\n\n\\title{Planejamento}")
     @dest.write("\n\\author{Rodrigo Botafogo}")
@@ -307,11 +310,12 @@ class Converter
     @dest.write("\n\\maketitle")
 
     @dest.write("\n\\end{document}")
+    ParseMM.new(@input, @output)
   end
 
 end
 
-conv = Converter.new("EBS.mm", "portugues.tex")
+conv = Converter.new("../example/EBS.mm", "../latex_templates/portugues.tex")
 conv.header
 
 # ParseFreemind.new("EBS.mm", "ebs.tex")
