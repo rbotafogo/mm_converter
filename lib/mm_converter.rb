@@ -23,6 +23,7 @@
 
 require 'fileutils'
 require 'rexml/document'
+require 'observer'
 require 'state_machine'
 
 require 'config'
@@ -35,6 +36,7 @@ require_relative 'richtext_machine'
 ##########################################################################################
 
 class ParseMM
+  include Observable
 
   #----------------------------------------------------------------------------------------
   # Parse the input_file and send parsed events to the given state machine.  Results should
@@ -47,14 +49,15 @@ class ParseMM
     @output_dir = (output_dir)? output_dir : File.dirname(input_file)
     @source = File.new(input_file)
 
-    # maybe, based on an input, we can chose different processing machines
-    @machine = MMMachine.new
-    @machine.set_output(@input_file, @output_dir)
+  end
 
-    # start parsing the file.  This class will receive the events and redirect them to 
-    # the proper machine
+  #----------------------------------------------------------------------------------------
+  # start parsing the file.  This class will receive the events and redirect them to 
+  # listeners
+  #----------------------------------------------------------------------------------------
+
+  def start
     REXML::Document.parse_stream(@source, self)
-
   end
 
   #----------------------------------------------------------------------------------------
@@ -70,18 +73,8 @@ class ParseMM
   #----------------------------------------------------------------------------------------
 
   def tag_start(name, attrs)
-
-    case name
-    when "node"
-      @machine.new_node(attrs)
-    when "richcontent"
-      @machine.rich_content
-    when "attribute"
-      @machine.new_attribute(attrs)
-    when "body"
-      @machine.new_body
-    end
-    
+    changed
+    notify_observers(:tag_start, name, attrs)
   end
 
   #----------------------------------------------------------------------------------------
@@ -89,30 +82,22 @@ class ParseMM
   #----------------------------------------------------------------------------------------
 
   def tag_end(name)
-
-    case name
-    when "node"
-      @machine.exit_node
-    when "richcontent"
-      @machine.end_rich_content
-    when "attribute"
-      @machine.end_attribute
-    when "body"
-      @machine.end_body
-    end
-
+    changed
+    notify_observers(:tag_end, name, nil)
   end
   
   #----------------------------------------------------------------------------------------
   #
   #----------------------------------------------------------------------------------------
 
+=begin
   def text(text)
     if (@machine.state == "in_body" && text.strip! != '')
       # @out.write(text)
       # @out.write("\n")
     end
   end 
+=end
 
 end
 
@@ -129,6 +114,7 @@ class MMConverter
 
   attr_reader :input
   attr_reader :output_dir
+  attr_reader :parser
 
   #----------------------------------------------------------------------------------------
   #
@@ -138,13 +124,10 @@ class MMConverter
 
     @input_file = input_file
     @output_dir = File.dirname(input_file)
-    ParseMM.new(input_file, output_dir)
-
-=begin
-    @rt_machine = RichtextMachine.new
-    @mm_machine.set_output(@out)
-    @rt_machine.set_output(@out)
-=end
+    @parser = ParseMM.new(input_file, output_dir)
+    # maybe, based on an input, we can chose different processing machines
+    @machine = MMMachine.new(@input_file, @output_dir, @parser)
+    @parser.start
 
   end
 

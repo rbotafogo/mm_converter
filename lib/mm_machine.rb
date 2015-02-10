@@ -35,20 +35,72 @@ class MMMachine
   #
   #----------------------------------------------------------------------------------------
 
-  def initialize
+  def initialize(input_file, output_dir, parser)
+
     @level = 0
-    @rt_machine = RichtextMachine.new
-    super
+    @parser = parser
+    # creating a single file, but later this should not be done here
+    output = output_dir + "/" + (File.basename(input_file, '.*') + ".txt")
+    @out = File.open(output, 'w')
+    parser.add_observer(self)
+    super()
+
   end
 
   #----------------------------------------------------------------------------------------
   #
   #----------------------------------------------------------------------------------------
 
-  def set_output(input_file, output_dir)
-    # creating a single file, but later this should not be done here
-    output = output_dir + "/" + (File.basename(input_file, '.*') + ".txt")
-    @out = File.open(output, 'w')
+  def tag_start(name, attrs)
+
+    case name
+    when "node"
+      new_node(attrs)
+    when "richcontent"
+      rich_content
+    when "attribute"
+      new_attribute(attrs)
+    when "body"
+      new_body
+    end
+  end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def tag_end(name)
+
+    case name
+    when "node"
+      exit_node
+    when "richcontent"
+      end_rich_content
+    when "attribute"
+      end_attribute
+    when "body"
+      end_body
+    end
+
+  end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def update(type, name, attrs)
+
+    case type
+    when :tag_start
+      p "received start"
+      tag_start(name, attrs)
+    when :tag_end
+      p "received end"
+      tag_end(name)
+    else
+      p "ooops error"
+    end
+
   end
 
   #----------------------------------------------------------------------------------------

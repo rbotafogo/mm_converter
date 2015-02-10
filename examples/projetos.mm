@@ -4,18 +4,43 @@
 <attribute NAME="now" VALUE="04/02/2015"/>
 <attribute NAME="start" VALUE="01/01/2015"/>
 <attribute NAME="period" VALUE="6m"/>
-<node CREATED="1422990750584" ID="ID_588142405" MODIFIED="1423225886140" POSITION="right" TEXT="Projetos">
-<node CREATED="1422990756819" ID="ID_1079569510" MODIFIED="1423252709472" TEXT="Emvision">
+<node CREATED="1422990750584" ID="ID_588142405" MODIFIED="1423485097324" POSITION="right" TEXT="Projetos">
 <richcontent TYPE="NOTE"><html>
   <head>
     
   </head>
   <body>
     <p>
-      <font size="2">\note{ </font>
+      Lista de projetos gerenciados pela equipe
     </p>
+  </body>
+</html>
+</richcontent>
+<node CREATED="1422990756819" ID="ID_1079569510" MODIFIED="1423485304658" TEXT="Emvision">
+<richcontent TYPE="NOTE"><html>
+  <head>
+    
+  </head>
+  <body>
     <p>
       <font size="2">Descri&#231;&#227;o do projeto ou da tarefa quando necess&#225;rio </font>
+    </p>
+  </body>
+</html>
+</richcontent>
+<attribute NAME="id" VALUE="p1"/>
+<node CREATED="1423485109365" ID="ID_373014868" MODIFIED="1423485742088" TEXT="Journal">
+<node CREATED="1423485142498" ID="ID_593589791" MODIFIED="1423485861097" TEXT="04/01/2015">
+<richcontent TYPE="NOTE"><html>
+  <head>
+    
+  </head>
+  <body>
+    <p>
+      <font size="2">\summary { </font>
+    </p>
+    <p>
+      <font size="2">este &#233; um sum&#225;rio da entrada no jornal </font>
     </p>
     <p>
       <font size="2">} </font>
@@ -24,29 +49,69 @@
       
     </p>
     <p>
-      <font size="2">\journal { </font>
+      <font size="2">\details { </font>
     </p>
     <p>
-      <font size="2">date: 04/01/2015 </font>
+      <font size="2">Neste dia foi feita a transfer&#234;ncia dos equipamentos do cliente A para o cliente B liberando as m&#225;quinas para instala&#231;&#227;o.&#160;&#160;Alguns pontos importantes: </font>
     </p>
     <p>
-      <font size="2">author: Botafogo </font>
+      
     </p>
-    <p>
-      <font size="2">alert: red </font>
-    </p>
-    <p>
-      <font size="2">summary: este &#233; um sum&#225;rio do alerta </font>
-    </p>
-    <p>
-      <font size="2">details: {esta &#233; uma explica&#231;&#227;o um pouco mais extensa} </font>
-    </p>
+    <ul>
+      <li>
+        Ponto 1
+      </li>
+      <li>
+        Ponto 2
+      </li>
+      <li>
+        Ponto 3
+      </li>
+    </ul>
+    <ol>
+      <li>
+        Item 1
+      </li>
+      <li>
+        Item 2
+      </li>
+      <li>
+        Item 3
+      </li>
+      <li>
+        Item 4
+      </li>
+    </ol>
     <p>
       <font size="2">}</font>
     </p>
   </body>
-</html></richcontent>
-<attribute NAME="id" VALUE="p1"/>
+</html>
+</richcontent>
+<attribute NAME="author" VALUE="botafogo"/>
+<attribute NAME="alert" VALUE="red"/>
+</node>
+<node CREATED="1423485749473" ID="ID_1246732397" MODIFIED="1423485807362" TEXT="06/01/2015">
+<richcontent TYPE="NOTE"><html>
+  <head>
+    
+  </head>
+  <body>
+    <p>
+      \summary{
+    </p>
+    <p>
+      Todos os problemas resolvidos.
+    </p>
+    <p>
+      }
+    </p>
+  </body>
+</html>
+</richcontent>
+<attribute NAME="alert" VALUE="green"/>
+</node>
+</node>
 <node CREATED="1422990776480" ID="ID_1599618568" MODIFIED="1423252709472" STYLE="fork" TEXT="Apresenta&#xe7;&#xe3;o do projeto">
 <attribute NAME="effort" VALUE="4h"/>
 <attribute NAME="effortdone" VALUE="2h"/>
