@@ -29,7 +29,6 @@ require 'state_machine'
 require 'config'
 
 require_relative 'mm_machine'
-require_relative 'richtext_machine'
 
 ##########################################################################################
 #
@@ -125,6 +124,7 @@ class MMConverter
     @input_file = input_file
     @output_dir = File.dirname(input_file)
     @parser = ParseMM.new(input_file, output_dir)
+
     # maybe, based on an input, we can chose different processing machines
     @machine = MMMachine.new(@input_file, @output_dir, @parser)
     @parser.start

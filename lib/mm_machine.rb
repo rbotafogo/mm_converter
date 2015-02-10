@@ -30,6 +30,7 @@
 class MMMachine
   
   attr_reader :level
+  attr_reader :first_attributes
   
   #----------------------------------------------------------------------------------------
   #
@@ -37,12 +38,13 @@ class MMMachine
 
   def initialize(input_file, output_dir, parser)
 
-    @level = 0
+    @level = -1
     @parser = parser
     # creating a single file, but later this should not be done here
     output = output_dir + "/" + (File.basename(input_file, '.*') + ".txt")
     @out = File.open(output, 'w')
     parser.add_observer(self)
+    @first_attributes = Array.new
     super()
 
   end
@@ -92,44 +94,12 @@ class MMMachine
 
     case type
     when :tag_start
-      p "received start"
       tag_start(name, attrs)
     when :tag_end
-      p "received end"
       tag_end(name)
     else
       p "ooops error"
     end
-
-  end
-
-  #----------------------------------------------------------------------------------------
-  #
-  #----------------------------------------------------------------------------------------
-
-  def start
-    ParseMM.new(input_file, output_dir, self)
-  end
-
-  #----------------------------------------------------------------------------------------
-  #
-  #----------------------------------------------------------------------------------------
-
-  def print_node
-
-    if (first_node?)
-      # FileUtils.copy_file(@template, @output)
-      # @out = File.open(@output, 'a')
-      @out.write("\n\n\\title{Planejamento}")
-      @out.write("\n\\author{Rodrigo Botafogo}")
-      @out.write("\n %\\date{} % Activate to display a given date or no date (if empty),")
-      @out.write("\n % otherwise the current date is printe")
-      @out.write("\n\\begin{document}")
-      @out.write("\n\\maketitle")
-      @out.write("\n\\end{document}")
-    end
-
-    new_section(@node_text)
 
   end
 
@@ -147,15 +117,26 @@ class MMMachine
       transition :awaiting_node => :first_node
       transition :first_node => :in_node
       transition :in_node => :in_node
+      
+      transition :still_more_first_node_attributes => :first_node
+      transition :attributes => :in_node
+      transition :still_more_attributes => :in_node
     end
 
     # When entering on state :first_mode, :header will print the header if there is one
-    before_transition :on => :new_node, :do => :print_node
+    after_transition :to => :first_node, :do => :process_first_node
+    after_transition :to => :in_node, :do => :config_parameters, if: :one_level?
 
     # When receiving event :new_node, we need to move up one level in the tree.
     after_transition :on => :new_node, :do => :up_level
-    
+
+    # Process node
+    after_transition :to => :in_node, :do => :process_node
+
     event :exit_node do
+      # transition :first_node_attributes => :in_node
+      # transition :attributes => :in_node
+      # transition :still_more_attributes => :in_node
       transition :in_node => :in_node, if: :pos_level?
       transition :in_node => :awaiting_node, if: :zero_level?
     end
@@ -164,11 +145,20 @@ class MMMachine
 
     # Receiving a new_attribute
     event :new_attribute do
-      transition :in_node => :attribute
+      transition :first_node => :first_node_attributes
+      transition :first_node_attributes => :first_node_attributes
+      transition :still_more_first_node_attributes => :first_node_attributes
+      transition :in_node => :attributes
+      transition :attributes => :attributes
+      transition :still_more_attributes => :attributes
     end
 
+    after_transition :to => :attributes, :do => :process_attribute
+    after_transition :to => :first_node_attributes, :do => :process_first_node_attribute
+
     event :end_attribute do
-      transition :attribute => :in_node
+      transition :first_node_attributes => :still_more_first_node_attributes
+      transition :attributes => :still_more_attributes
     end
 
     # Entering rich_content
@@ -219,13 +209,25 @@ class MMMachine
     @level == 0
   end
 
+  def one_level?
+    @level == 1
+  end
+
   #----------------------------------------------------------------------------------------
   #
   #----------------------------------------------------------------------------------------
 
   def new_node(attrs)
     @node_text = attrs["TEXT"]
-    # new_section(attrs["TEXT"])
+    super
+  end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def exit_node
+    # p "event exit_node"
     super
   end
 
@@ -234,11 +236,89 @@ class MMMachine
   #----------------------------------------------------------------------------------------
 
   def new_attribute(attrs)
-    @out.write("\n")
-    @out.write("#{attrs['NAME']}, #{attrs['VALUE']}")
+    @new_attribute = attrs
+    # @out.write("\n")
+    # @out.write("#{attrs['NAME']}, #{attrs['VALUE']}")
     super
   end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def end_attribute
+    # p "event end_attribute"
+    super
+  end
+
+
+
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
   
+  def process_first_node_attribute
+    p "process_first_node_attribute"
+    @first_attributes << @new_attribute
+    p @new_attribute
+  end
+
+  def config_parameters
+    p "config_parameters called"
+    p @first_attributes
+  end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+  
+  def process_attribute
+    p @new_attribute
+  end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def process_first_node
+    p @node_text
+  end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def process_node
+    p @node_text
+  end
+
+end
+
+
+class LatexMachine < MMMachine
+
+  
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def process_first_node
+
+    # FileUtils.copy_file(@template, @output)
+    # @out = File.open(@output, 'a')
+    @out.write("\n\n\\title{Planejamento}")
+    @out.write("\n\\author{Rodrigo Botafogo}")
+    @out.write("\n %\\date{} % Activate to display a given date or no date (if empty),")
+    @out.write("\n % otherwise the current date is printe")
+    @out.write("\n\\begin{document}")
+    @out.write("\n\\maketitle")
+    @out.write("\n\\end{document}")
+    
+    new_section(@node_text)
+
+  end
+
   #----------------------------------------------------------------------------------------
   #
   #----------------------------------------------------------------------------------------
@@ -270,4 +350,3 @@ class MMMachine
   end
 
 end
-
