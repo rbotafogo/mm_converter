@@ -28,79 +28,28 @@
 ##########################################################################################
 
 class MMMachine
+  include BaseMMMachine
   
   attr_reader :level
-  attr_reader :first_attributes
-  
+  attr_reader :head
+
   #----------------------------------------------------------------------------------------
   #
   #----------------------------------------------------------------------------------------
 
   def initialize(input_file, output_dir, parser)
-
-    @level = -1
-    @parser = parser
-    # creating a single file, but later this should not be done here
-    output = output_dir + "/" + (File.basename(input_file, '.*') + ".txt")
+    output = output_dir + "/" + (File.basename(input_file, '.*') + ".tjp")
     @out = File.open(output, 'w')
-    parser.add_observer(self)
-    @first_attributes = Array.new
+    @level = 0
     super()
-
   end
 
   #----------------------------------------------------------------------------------------
   #
   #----------------------------------------------------------------------------------------
 
-  def tag_start(name, attrs)
-
-    case name
-    when "node"
-      new_node(attrs)
-    when "richcontent"
-      rich_content
-    when "attribute"
-      new_attribute(attrs)
-    when "body"
-      new_body
-    end
-  end
-
-  #----------------------------------------------------------------------------------------
-  #
-  #----------------------------------------------------------------------------------------
-
-  def tag_end(name)
-
-    case name
-    when "node"
-      exit_node
-    when "richcontent"
-      end_rich_content
-    when "attribute"
-      end_attribute
-    when "body"
-      end_body
-    end
-
-  end
-
-  #----------------------------------------------------------------------------------------
-  #
-  #----------------------------------------------------------------------------------------
-
-  def update(type, name, attrs)
-
-    case type
-    when :tag_start
-      tag_start(name, attrs)
-    when :tag_end
-      tag_end(name)
-    else
-      p "ooops error"
-    end
-
+  def header(head)
+    @head = head
   end
 
   #----------------------------------------------------------------------------------------
@@ -109,58 +58,60 @@ class MMMachine
 
   state_machine :state, initial: :awaiting_node do
 
+    #####################################################################################
+    # What to do when we get a new_node event
+    #####################################################################################
     # We start the machine by awaiting on a node. Freemind is a tree structure and parsing
     # will move from node to node.  When receiving event :new_node, we move to state
     # :in_node.  If we were already on state :in_node, receiving a :new_node, keeps us in
     # state :in_noode.
     event :new_node do
-      transition :awaiting_node => :first_node
-      transition :first_node => :in_node
-      transition :in_node => :in_node
-      
-      transition :still_more_first_node_attributes => :first_node
-      transition :attributes => :in_node
-      transition :still_more_attributes => :in_node
+      transition :awaiting_node => :down_node
+      transition [:down_node, :up_node, :leveled_node] => :down_node
+      transition [:attributes, :still_more_attributes] => :down_node
     end
 
-    # When entering on state :first_mode, :header will print the header if there is one
-    after_transition :to => :first_node, :do => :process_first_node
-    after_transition :to => :in_node, :do => :config_parameters, if: :one_level?
-
-    # When receiving event :new_node, we need to move up one level in the tree.
+    # When receiving event :new_node, we need to move add one level in the tree.
     after_transition :on => :new_node, :do => :up_level
 
-    # Process node
-    after_transition :to => :in_node, :do => :process_node
+    # Only process a node the first time we get to it, i.e., when we are going down
+    # the tree.
+    after_transition :to => :down_node, :do => :process_node
+
+    #####################################################################################
+    # What to do when we get an exit_node event
+    #####################################################################################
 
     event :exit_node do
-      # transition :first_node_attributes => :in_node
-      # transition :attributes => :in_node
-      # transition :still_more_attributes => :in_node
-      transition :in_node => :in_node, if: :pos_level?
-      transition :in_node => :awaiting_node, if: :zero_level?
+      transition [:down_node, :up_node, :leveled_node, :attribute, 
+      :still_more_attributes] => :up_node, if: :pos_level?
+      transition [:down_node, :up_node, :leveled_node, :attribute,
+      :still_more_attributes] => :awaiting_node, if: :zero_level?
     end
 
+    # When we exit a node, we reduce it's level on the tree
     after_transition :on => :exit_node, :do => :down_level
+    after_transition :on => :exit_node, :do => :process_exit_node
 
+    #####################################################################################
+    # What to do when receiving a new_attribute
+    #####################################################################################
     # Receiving a new_attribute
     event :new_attribute do
-      transition :first_node => :first_node_attributes
-      transition :first_node_attributes => :first_node_attributes
-      transition :still_more_first_node_attributes => :first_node_attributes
-      transition :in_node => :attributes
+      transition [:down_node, :up_node, :leveled_node] => :attributes
       transition :attributes => :attributes
       transition :still_more_attributes => :attributes
     end
 
     after_transition :to => :attributes, :do => :process_attribute
-    after_transition :to => :first_node_attributes, :do => :process_first_node_attribute
 
     event :end_attribute do
-      transition :first_node_attributes => :still_more_first_node_attributes
       transition :attributes => :still_more_attributes
     end
 
+    #####################################################################################
+    # Processing rich text
+    #####################################################################################
     # Entering rich_content
     event :rich_content do
     end
@@ -175,6 +126,57 @@ class MMMachine
     event :end_body do
     end
 
+  end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def new_node(value)
+    @node_value = value
+    @node_text = value["TEXT"]
+    super
+  end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def exit_node
+    # p "event exit_node"
+    super
+  end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def new_attribute(value)
+    @attribute_value = value
+    # @out.write("\n")
+    # @out.write("#{attrs['NAME']}, #{attrs['VALUE']}")
+    super
+  end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def end_attribute
+    # p "event end_attribute"
+    super
+  end
+  
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def pos_level?
+    @level > 0
+  end
+
+  def zero_level?
+    @level == 0
   end
 
   #----------------------------------------------------------------------------------------
@@ -196,93 +198,9 @@ class MMMachine
   #----------------------------------------------------------------------------------------
   #
   #----------------------------------------------------------------------------------------
-
-  def pos_level?
-    @level > 0
-  end
-
-  #----------------------------------------------------------------------------------------
-  #
-  #----------------------------------------------------------------------------------------
-
-  def zero_level?
-    @level == 0
-  end
-
-  def one_level?
-    @level == 1
-  end
-
-  #----------------------------------------------------------------------------------------
-  #
-  #----------------------------------------------------------------------------------------
-
-  def new_node(attrs)
-    @node_text = attrs["TEXT"]
-    super
-  end
-
-  #----------------------------------------------------------------------------------------
-  #
-  #----------------------------------------------------------------------------------------
-
-  def exit_node
-    # p "event exit_node"
-    super
-  end
-
-  #----------------------------------------------------------------------------------------
-  #
-  #----------------------------------------------------------------------------------------
-
-  def new_attribute(attrs)
-    @new_attribute = attrs
-    # @out.write("\n")
-    # @out.write("#{attrs['NAME']}, #{attrs['VALUE']}")
-    super
-  end
-
-  #----------------------------------------------------------------------------------------
-  #
-  #----------------------------------------------------------------------------------------
-
-  def end_attribute
-    # p "event end_attribute"
-    super
-  end
-
-
-
-
-  #----------------------------------------------------------------------------------------
-  #
-  #----------------------------------------------------------------------------------------
-  
-  def process_first_node_attribute
-    p "process_first_node_attribute"
-    @first_attributes << @new_attribute
-    p @new_attribute
-  end
-
-  def config_parameters
-    p "config_parameters called"
-    p @first_attributes
-  end
-
-  #----------------------------------------------------------------------------------------
-  #
-  #----------------------------------------------------------------------------------------
   
   def process_attribute
-    p @new_attribute
-  end
-
-  #----------------------------------------------------------------------------------------
-  #
-  #----------------------------------------------------------------------------------------
-
-  def process_first_node
-    p @node_text
+    p @attribute_value
   end
 
   #----------------------------------------------------------------------------------------
@@ -290,14 +208,53 @@ class MMMachine
   #----------------------------------------------------------------------------------------
 
   def process_node
-    p @node_text
+    p @node_value
+  end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def process_exit_node
+    p "geting out of node"
   end
 
 end
 
+##########################################################################################
+#
+##########################################################################################
+
+class TaskjugglerMachine < MMMachine
+
+  def header(head)
+    @out.print("project #{head[0]['TEXT']} {\n")
+    head[1].each do |attr|
+      @out.print("#{attr[0]} #{attr[1]}")
+      @out.print("\n")
+    end
+    @out.print("\n")
+  end
+
+  def process_node
+    @out.print("task #{@node_value['ID']} \"#{@node_value['TEXT']}\"{\n")
+  end
+
+  def process_exit_node
+    @out.print("}\n\t")
+  end
+
+  def process_attribute
+    @out.print("#{@attribute_value['NAME']} #{@attribute_value['VALUE']}\n")
+  end
+
+end
+
+##########################################################################################
+#
+##########################################################################################
 
 class LatexMachine < MMMachine
-
   
   #----------------------------------------------------------------------------------------
   #
