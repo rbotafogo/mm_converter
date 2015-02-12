@@ -32,6 +32,8 @@ class MMMachine
   
   attr_reader :level
   attr_reader :head
+  attr_reader :attributes
+  attr_reader :ids
 
   #----------------------------------------------------------------------------------------
   #
@@ -41,6 +43,8 @@ class MMMachine
     output = output_dir + "/" + (File.basename(input_file, '.*') + ".tjp")
     @out = File.open(output, 'w')
     @level = 0
+    @attributes = Hash.new
+    @ids = Hash.new
     super()
   end
 
@@ -69,6 +73,9 @@ class MMMachine
       transition :awaiting_node => :down_node
       transition [:down_node, :up_node, :leveled_node] => :down_node
       transition [:attributes, :still_more_attributes] => :down_node
+      transition :journalmode => :journal_start
+      transition :journal_start => :journal_entry
+      # transition :journal_entry => :journal_entry
     end
 
     # When receiving event :new_node, we need to move add one level in the tree.
@@ -77,6 +84,7 @@ class MMMachine
     # Only process a node the first time we get to it, i.e., when we are going down
     # the tree.
     after_transition :to => :down_node, :do => :process_node
+    after_transition :to => :journal_entry, :do => :process_journalentry
 
     #####################################################################################
     # What to do when we get an exit_node event
@@ -84,14 +92,17 @@ class MMMachine
 
     event :exit_node do
       transition [:down_node, :up_node, :leveled_node, :attribute, 
-      :still_more_attributes] => :up_node, if: :pos_level?
+        :still_more_attributes] => :up_node, if: :pos_level?
       transition [:down_node, :up_node, :leveled_node, :attribute,
-      :still_more_attributes] => :awaiting_node, if: :zero_level?
+        :still_more_attributes] => :awaiting_node, if: :zero_level?
+      transition :journal_entry => :journal_start, if: :journal?
+      transition :journal_entry => :up_node, if: :journal_ended?
+      transition :journal_start => :up_node
     end
 
     # When we exit a node, we reduce it's level on the tree
     after_transition :on => :exit_node, :do => :down_level
-    after_transition :on => :exit_node, :do => :process_exit_node
+    before_transition :on => :exit_node, :do => :process_exit_node
 
     #####################################################################################
     # What to do when receiving a new_attribute
@@ -108,6 +119,16 @@ class MMMachine
     event :end_attribute do
       transition :attributes => :still_more_attributes
     end
+
+    #####################################################################################
+    # What to do when receiving a new_journal even
+    #####################################################################################
+
+    event :new_journal do
+      transition all => :journalmode
+    end
+
+    after_transition :to => :journalmode, :do => :process_journal
 
     #####################################################################################
     # Processing rich text
@@ -132,9 +153,18 @@ class MMMachine
   #
   #----------------------------------------------------------------------------------------
 
+  def new_journal(value)
+    # p "new_journal"
+    super
+  end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
   def new_node(value)
-    @node_value = value
     @node_text = value["TEXT"]
+    @node_value = value
     super
   end
 
@@ -195,12 +225,14 @@ class MMMachine
     @level -= 1
   end
 
+
   #----------------------------------------------------------------------------------------
   #
   #----------------------------------------------------------------------------------------
   
   def process_attribute
     p @attribute_value
+    @attributes[@attribute_value['NAME']] = @attribute_value['VALUE']
   end
 
   #----------------------------------------------------------------------------------------
@@ -219,6 +251,25 @@ class MMMachine
     p "geting out of node"
   end
 
+  def process_journal
+    # p "starting journal at level #{@level}"
+    @journal_level = @level
+  end
+
+  def process_journalentry
+    p "process journalentry"
+  end
+
+  def journal?
+    # p "checking journal at level: #{@level}"
+    @level > @journal_level
+  end
+
+  def journal_ended?
+    # p "checking journal ended at level: #{@level}"
+    !(journal?)
+  end
+
 end
 
 ##########################################################################################
@@ -226,6 +277,21 @@ end
 ##########################################################################################
 
 class TaskjugglerMachine < MMMachine
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def new_node(value)
+    @node_text = value["TEXT"]
+    if (@node_text.strip == "Journal")
+      new_journal(value)
+    else
+      @node_value = value
+    end
+    super
+  end
+
 
   def header(head)
     @out.print("project #{head[0]['TEXT']} {\n")
@@ -236,16 +302,39 @@ class TaskjugglerMachine < MMMachine
     @out.print("\n")
   end
 
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
   def process_node
+    @node_id = @node_value['ID']
     @out.print("task #{@node_value['ID']} \"#{@node_value['TEXT']}\"{\n")
   end
 
   def process_exit_node
-    @out.print("}\n\t")
+    @out.print("}\n") unless journal_start?
   end
 
   def process_attribute
-    @out.print("#{@attribute_value['NAME']} #{@attribute_value['VALUE']}\n")
+    case @attribute_value['NAME']
+    when "id"
+      @ids[@attribute_value['VALUE']] = @node_id 
+    when "depends"
+      val = @attribute_value['VALUE']
+      count = val.scan(/!/).count
+      val.delete!("!")
+      @out.print("depends #{@ids[val]}\n")
+    else
+      @out.print("#{@attribute_value['NAME']} #{@attribute_value['VALUE']}\n")
+    end
+  end
+
+  def process_journalentry
+    journal_header = @node_value['TEXT'].split
+    date = journal_header[0]
+    journal_header.shift
+    headline = journal_header.join(" ")
+    @out.print("journalentry #{date} #{headline}{")
   end
 
 end
