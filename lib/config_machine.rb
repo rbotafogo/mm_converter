@@ -65,6 +65,7 @@ class ConfigMachine
 
     # When entering on state :first_mode, :header will print the header if there is one
     after_transition :to => :first_node, :do => :process_first_node
+    after_transition :to => :first_node, :do => :get_header
     after_transition :to => :end_config, :do => :config_parameters
 
     #####################################################################################
@@ -122,13 +123,21 @@ class ConfigMachine
   #
   #----------------------------------------------------------------------------------------
 
+  def get_header
+    @head_node = @node_value
+  end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
   def config_parameters
     # p @first_attributes
     convert_to = @first_attributes.delete('convert_to')
     case convert_to
     when "taskjuggler"
       machine = TaskjugglerMachine.new(@input_file, @output_dir, @parser)
-      machine.header([@node_value, @first_attributes])
+      machine.header([@head_node, @node_value, @first_attributes])
       machine.new_node(@node_value)
       @parser.delete_observer(self)
       @parser.add_new_observer(machine)

@@ -294,12 +294,22 @@ class TaskjugglerMachine < MMMachine
 
 
   def header(head)
-    @out.print("project #{head[0]['TEXT']} {\n")
-    head[1].each do |attr|
+
+    attrs = head[2]
+    @out.print("project \"#{head[0]['TEXT']}\" #{attrs['start']} +#{attrs['period']} {\n")
+    attrs.delete('start')
+    attrs.delete('period')
+    attrs.each do |attr|
       @out.print("#{attr[0]} #{attr[1]}")
       @out.print("\n")
     end
-    @out.print("\n")
+    @out.print("scenario plan \"Planned Scenario\" {\n")
+    @out.print("scenario actual \"Actual Scenario\" {\n")
+    @out.print("}\n}\n}\n")
+
+    @out.print("include \"resources.tji\"\n")
+    @out.print("task #{head[0]['ID']} \"#{head[0]['TEXT']}\" {\n")
+
   end
 
   #----------------------------------------------------------------------------------------
@@ -323,7 +333,11 @@ class TaskjugglerMachine < MMMachine
       val = @attribute_value['VALUE']
       count = val.scan(/!/).count
       val.delete!("!")
-      @out.print("depends #{@ids[val]}\n")
+      @out.print("depends #{'!' * count}#{@ids[val]}\n")
+    when "dailymin"
+      @out.print("limits {dailymin #{@attribute_value['VALUE']}}\n")
+    when "dailymax"
+      @out.print("limits {dailymax #{@attribute_value['VALUE']}}\n")
     else
       @out.print("#{@attribute_value['NAME']} #{@attribute_value['VALUE']}\n")
     end

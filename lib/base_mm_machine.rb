@@ -27,6 +27,7 @@
 # attribute to configure the rest of the map's convertion
 ##########################################################################################
 
+require 'time'
 require 'state_machine'
 
 module BaseMMMachine
