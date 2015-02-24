@@ -38,15 +38,16 @@ module MergeObservable
   alias_method :old_notify, :notify_observers
 
   def add_new_observer(observer)
-    @new_observer ||= Array.new
-    @new_observer << observer
+    @new_observers ||= Array.new
+    @new_observers << observer
   end
 
   def merge_observers
-    @new_observer ||= Array.new
-    @new_observer.each do |obs|
+    @new_observers ||= Array.new
+    @new_observers.each do |obs|
       self.add_observer(obs)
     end
+    @new_observers = nil 
   end
 
   def notify_observers(*args)
@@ -148,3 +149,4 @@ class MMConverter
 end
 
 conv = MMConverter.new("../examples/projetos.mm")
+# conv = MMConverter.new("../../../../Embratel/Projetos/Business Security - Planejamento.mm")

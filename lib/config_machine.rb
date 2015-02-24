@@ -22,6 +22,7 @@
 ##########################################################################################
 
 require_relative 'base_mm_machine'
+require_relative 'mm_machine'
 
 ##########################################################################################
 #
@@ -116,7 +117,8 @@ class ConfigMachine
   #----------------------------------------------------------------------------------------
   
   def process_first_node_attribute
-    @first_attributes[@attribute_value['NAME']] = @attribute_value['VALUE']
+    @first_attributes[@attribute_value['NAME']] ||= Array.new
+    @first_attributes[@attribute_value['NAME']].push(@attribute_value['VALUE'])
   end
 
   #----------------------------------------------------------------------------------------
@@ -134,7 +136,8 @@ class ConfigMachine
   def config_parameters
     # p @first_attributes
     convert_to = @first_attributes.delete('convert_to')
-    case convert_to
+    raise "Convertion not specified" if convert_to == nil
+    case convert_to[0]
     when "taskjuggler"
       machine = TaskjugglerMachine.new(@input_file, @output_dir, @parser)
       machine.header([@head_node, @node_value, @first_attributes])
@@ -187,3 +190,4 @@ class ConfigMachine
   end
 
 end
+

@@ -21,51 +21,25 @@
 # ENHANCEMENTS, OR MODIFICATIONS.
 ##########################################################################################
 
-
-##########################################################################################
-# This is a simple state machine to only read the root node of an MM and use its
-# attribute to configure the rest of the map's convertion
-##########################################################################################
-
-require 'time'
-require 'state_machine'
-
-module BaseMMMachine
-
+class LatexMachine < MMMachine
+  
   #----------------------------------------------------------------------------------------
   #
   #----------------------------------------------------------------------------------------
 
-  def tag_start(name, value)
+  def process_first_node
 
-    case name
-    when "node"
-      new_node(value)
-    when "richcontent"
-      rich_content
-    when "attribute"
-      new_attribute(value)
-    when "body"
-      new_body
-    end
-  end
-
-  #----------------------------------------------------------------------------------------
-  #
-  #----------------------------------------------------------------------------------------
-
-  def tag_end(name)
-
-    case name
-    when "node"
-      exit_node
-    when "richcontent"
-      end_rich_content
-    when "attribute"
-      end_attribute
-    when "body"
-      end_body
-    end
+    # FileUtils.copy_file(@template, @output)
+    # @out = File.open(@output, 'a')
+    @out.write("\n\n\\title{Planejamento}")
+    @out.write("\n\\author{Rodrigo Botafogo}")
+    @out.write("\n %\\date{} % Activate to display a given date or no date (if empty),")
+    @out.write("\n % otherwise the current date is printe")
+    @out.write("\n\\begin{document}")
+    @out.write("\n\\maketitle")
+    @out.write("\n\\end{document}")
+    
+    new_section(@node_text)
 
   end
 
@@ -73,17 +47,30 @@ module BaseMMMachine
   #
   #----------------------------------------------------------------------------------------
 
-  def update(type, name, attrs)
-
-    case type
-    when :tag_start
-      tag_start(name, attrs)
-    when :tag_end
-      tag_end(name)
-    else
-      p "ooops error"
+  def new_section(text)
+    case @level
+    when 0
+      @out.write("\\del{")
+    when 1
+      @out.write("\n")
+      @out.write("\\chapter{#{text}}")
+      @out.write("\n")
+    when 2
+      @out.write("\\section{#{text}}")
+      @out.write("\n")
+    when 3
+      @out.write("\\subsection{#{text}}")
+      @out.write("\n")
+    when 4
+      @out.write("\\subsubsection{#{text}}")
+      @out.write("\n")
+    when 5
+      @out.write("\\paragraph{#{text}}")
+      @out.write("\n")
+    when 6
+      @out.write("\\subparagraph{#{text}}")
+      @out.write("\n")
     end
-
   end
 
 end

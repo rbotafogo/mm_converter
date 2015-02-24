@@ -21,31 +21,28 @@
 # ENHANCEMENTS, OR MODIFICATIONS.
 ##########################################################################################
 
-require_relative 'base_mm_machine'
 
 ##########################################################################################
 #
 ##########################################################################################
 
-class MMMachine
+class JournalmodeMachine
   include BaseMMMachine
   
   attr_reader :level
-  attr_reader :head
-  attr_reader :attributes
-  attr_reader :ids
 
   #----------------------------------------------------------------------------------------
   #
   #----------------------------------------------------------------------------------------
 
-  def initialize(input_file, output_dir, parser)
-    output = output_dir + "/" + (File.basename(input_file, '.*') + ".tjp")
-    @out = File.open(output, 'w')
+  def initialize(out, parser, return_machine)
+    @out = out
     @parser = parser
-    @level = 0
+    @return_machine = return_machine
+
+    @level = 1
     @attributes = Hash.new
-    @ids = Hash.new
+    @ids = Hash.new # this might be wrong!!! Might require a singe ids hash for the whole system
     super()
   end
 
@@ -53,38 +50,19 @@ class MMMachine
   #
   #----------------------------------------------------------------------------------------
 
-  def header(head)
-    @head = head
-  end
-
-  #----------------------------------------------------------------------------------------
-  #
-  #----------------------------------------------------------------------------------------
-
-  state_machine :state, initial: :awaiting_node do
+  state_machine :state, initial: :journal_entry do
 
     #####################################################################################
     # What to do when we get a new_node event
     #####################################################################################
-    # We start the machine by awaiting on a node. Freemind is a tree structure and parsing
-    # will move from node to node.  When receiving event :new_node, we move to state
-    # :in_node.  If we were already on state :in_node, receiving a :new_node, keeps us in
-    # state :in_noode.
-    event :new_node do
-      transition :awaiting_node => :down_node
-      transition [:down_node, :up_node, :leveled_node] => :down_node
-      transition [:attributes, :still_more_attributes] => :down_node
-      transition :journalmode => :journal_start
-      transition :journal_start => :journal_entry
-      # transition :journal_entry => :journal_entry
-    end
 
-    # When receiving event :new_node, we need to move add one level in the tree.
-    after_transition :on => :new_node, :do => :up_level
+    event :new_node do
+      transition [:journal_entry, :new_entry] => :journal_entry
+      transition :attributes => :journal_entry
+    end
 
     # Only process a node the first time we get to it, i.e., when we are going down
     # the tree.
-    after_transition :to => :down_node, :do => :process_node
     after_transition :to => :journal_entry, :do => :process_journalentry
 
     #####################################################################################
@@ -92,25 +70,21 @@ class MMMachine
     #####################################################################################
 
     event :exit_node do
-      transition [:down_node, :up_node, :leveled_node, :attribute, 
-        :still_more_attributes] => :up_node, if: :pos_level?
-      transition [:down_node, :up_node, :leveled_node, :attribute,
-        :still_more_attributes] => :awaiting_node, if: :zero_level?
-      transition :journal_entry => :journal_start, if: :journal?
-      transition :journal_entry => :up_node, if: :journal_ended?
-      transition :journal_start => :up_node
+      transition [:journal_entry, :attributes, :still_more_attributes] => 
+        :journal_finish, if: :journal_ended?
+      transition [:journal_entry, :attributes, :still_more_attributes] => 
+        :new_entry, if: :journal?
     end
 
-    # When we exit a node, we reduce it's level on the tree
-    after_transition :on => :exit_node, :do => :down_level
-    before_transition :on => :exit_node, :do => :process_exit_node
+    after_transition :to => :new_entry, :do => :process_end_entry
+    after_transition :to => :journal_finish, :do => :process_end_journal
 
     #####################################################################################
     # What to do when receiving a new_attribute
     #####################################################################################
     # Receiving a new_attribute
     event :new_attribute do
-      transition [:down_node, :up_node, :leveled_node] => :attributes
+      transition :journal_entry => :attributes
       transition :attributes => :attributes
       transition :still_more_attributes => :attributes
     end
@@ -119,14 +93,6 @@ class MMMachine
 
     event :end_attribute do
       transition :attributes => :still_more_attributes
-    end
-
-    #####################################################################################
-    # What to do when composing with another state_machine
-    #####################################################################################
-
-    event :compose do
-      transition all => :awaiting_node
     end
 
     #####################################################################################
@@ -152,10 +118,10 @@ class MMMachine
   #
   #----------------------------------------------------------------------------------------
 
-  # This is called twice when a having subclasses!!! Changes!!
   def new_node(value)
-    @node_text = value["TEXT"]
+    @node_text = value['TEXT']
     @node_value = value
+    @level += 1
     super
   end
 
@@ -165,6 +131,8 @@ class MMMachine
 
   def exit_node
     # p "event exit_node"
+    @level -= 1
+    p @level
     super
   end
 
@@ -187,81 +155,6 @@ class MMMachine
     # p "event end_attribute"
     super
   end
-  
-  #----------------------------------------------------------------------------------------
-  #
-  #----------------------------------------------------------------------------------------
-
-  def pos_level?
-    @level > 0
-  end
- 
-  #----------------------------------------------------------------------------------------
-  #
-  #----------------------------------------------------------------------------------------
-
-  def zero_level?
-    @level == 0
-  end
-
-  #----------------------------------------------------------------------------------------
-  #
-  #----------------------------------------------------------------------------------------
-
-  def up_level
-    @level += 1
-  end
-
-  #----------------------------------------------------------------------------------------
-  #
-  #----------------------------------------------------------------------------------------
-
-  def down_level
-    @level -= 1
-  end
-
-
-  #----------------------------------------------------------------------------------------
-  #
-  #----------------------------------------------------------------------------------------
-  
-  def process_attribute
-    p @attribute_value
-    @attributes[@attribute_value['NAME']] = @attribute_value['VALUE']
-  end
-
-  #----------------------------------------------------------------------------------------
-  #
-  #----------------------------------------------------------------------------------------
-
-  def process_node
-    p @node_value
-  end
-
-  #----------------------------------------------------------------------------------------
-  #
-  #----------------------------------------------------------------------------------------
-
-  def process_exit_node
-    p "geting out of node"
-  end
-
-  #----------------------------------------------------------------------------------------
-  #
-  #----------------------------------------------------------------------------------------
-
-  def process_journal
-    # p "starting journal at level #{@level}"
-    @journal_level = @level
-  end
-
-  #----------------------------------------------------------------------------------------
-  #
-  #----------------------------------------------------------------------------------------
-
-  def process_journalentry
-    p "process journalentry"
-  end
 
   #----------------------------------------------------------------------------------------
   #
@@ -269,7 +162,7 @@ class MMMachine
 
   def journal?
     # p "checking journal at level: #{@level}"
-    @level > @journal_level
+    @level > 0
   end
 
   #----------------------------------------------------------------------------------------
@@ -278,10 +171,46 @@ class MMMachine
 
   def journal_ended?
     # p "checking journal ended at level: #{@level}"
-    !(journal?)
+    @level == 0
+  end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def process_journalentry
+    journal_header = @node_value['TEXT'].split
+    date = journal_header[0]
+    journal_header.shift
+    headline = journal_header.join(" ")
+    @out.print("journalentry #{date} #{headline}{\n")
+  end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def process_end_entry
+    @out.print("}\n")
+  end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def process_attribute
+    @out.print("#{@attribute_value['NAME']} #{@attribute_value['VALUE']}\n")
+  end
+
+  #----------------------------------------------------------------------------------------
+  # End the processing of journal entries and return the processing to the original 
+  # machine, whatever it was.
+  #----------------------------------------------------------------------------------------
+
+  def process_end_journal
+    @parser.delete_observer(self)
+    @parser.add_new_observer(@return_machine)
   end
 
 end
 
-require_relative 'taskjuggler_machine'
-require_relative 'latex_machine'
