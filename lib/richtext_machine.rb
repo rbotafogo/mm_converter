@@ -21,10 +21,7 @@
 # ENHANCEMENTS, OR MODIFICATIONS.
 ##########################################################################################
 
-require 'fileutils'
-require 'rexml/document'
-require 'state_machine'
-require 'config'
+require "state_machine"
 
 ##########################################################################################
 #
@@ -36,23 +33,78 @@ class RichtextMachine
   #
   #----------------------------------------------------------------------------------------
 
-  def set_output(out)
+  def initialize(out, parser, return_machine)
     @out = out
+    @parser = parser
+    @return_machine = return_machine
+
+    @level = 1
+    @attributes = Hash.new
+    @ids = Hash.new # this might be wrong!!! Might require a singe ids hash for the whole system
+    super()
   end
 
   #----------------------------------------------------------------------------------------
   #
   #----------------------------------------------------------------------------------------
 
-  state_machine :state, initial: :awaiting_richcontent do
+  def tag_start(name, value)
 
-    event :rich_content do
-      transition :awaiting_richcontent => :richcontent
+    case name
+    when "richcontent"
+      rich_content
+    when "body"
+      new_body
+    when "ul"
+      new_itemize
+    when "li"
+      new_item
+    end
+  end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def tag_end(name)
+
+    case name
+    when "richcontent"
+      end_rich_content
+    when "body"
+      end_body
+    when "ul"
+      end_itemize
+    when "li"
+      end_item
+    end
+    
+  end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def update(type, name, attrs)
+
+    case type
+    when :tag_start
+      tag_start(name, attrs)
+    when :tag_end
+      tag_end(name)
+    when :new_text
+      new_text(name)
+    else
+      p "ooops error"
     end
 
-    event :end_rich_content do
-      transition :richcontent => :awaiting_richcontent
-    end
+  end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  state_machine :state, initial: :richcontent do
 
     event :new_body do
       transition :richcontent => :in_body
@@ -62,12 +114,12 @@ class RichtextMachine
       transition :in_body => :richcontent
     end
 
-    event :text do
+    event :new_text do
       transition :in_body => same
       transition :in_item => same
     end
 
-    after_transition :on => :text, :do => :print_text
+    after_transition :on => :new_text, :do => :print_text
 
     event :new_itemize do
       transition :in_body => :itemize
@@ -93,30 +145,76 @@ class RichtextMachine
 
   end
 
-  def print_text
-    @out.write(@text)
-    @out.write("\n")
-    @text = nil
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def new_body
+    # p "new_body"
+    super
   end
 
-  # Passing argument to an event
-  def text(text)
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def new_itemize
+    # p "itemize"
+    super
+  end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def new_item
+    # p "item"
+    super
+  end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def new_text(text)
     @text = text.strip
     super
   end
 
-  def print_begin_itemize
-    @out.write("\\begin{itemize}")
-    @out.write("\n")
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def end_rich_content
+    @parser.delete_observer(self)
+    @parser.add_new_observer(@return_machine)
   end
 
-  def print_end_itemize
-    @out.write("\\end{itemize}")
-    @out.write("\n")
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def end_body
+    # p "end_body"
+    super
   end
 
-  def print_item
-    @out.write("\\item ")
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def end_itemize
+    # p "end_itemize"
+    super
+  end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def end_item
+    # p "end_item"
+    super
   end
 
 end
@@ -125,84 +223,115 @@ end
 #
 ##########################################################################################
 
-class ParseRichtext
-
-  attr_reader :input
-  attr_reader :output
+class RTMarkdownMachine < RichtextMachine
 
   #----------------------------------------------------------------------------------------
   #
   #----------------------------------------------------------------------------------------
 
-  def initialize(input_file, output_file)
-
-    @input_file = input_file
-    @output_file = output_file
-
-    @source = File.new(input_file)
-    @out = File.open(output_file, 'w')
-
-    @rt_machine = RichtextMachine.new
-    @rt_machine.set_output(@out)
-
-    REXML::Document.parse_stream(@source, self)
-
-  end
-
-  #----------------------------------------------------------------------------------------
-  # This method is necessary do ignore parsing events that are of no interest to our
-  # parsing.
-  #----------------------------------------------------------------------------------------
-
-  def method_missing(*arg)
-  end
-  
-  #----------------------------------------------------------------------------------------
-  #
-  #----------------------------------------------------------------------------------------
-
-  def tag_start(name, attrs)
-
-    case name
-    when "richcontent"
-      @rt_machine.rich_content
-    when "body"
-      @rt_machine.new_body
-    when "ul"
-      @rt_machine.new_itemize
-    when "li"
-      @rt_machine.new_item
-    end
-    
+  def new_body
+    @out.print("-8<-\n")
+    super
   end
 
   #----------------------------------------------------------------------------------------
   #
   #----------------------------------------------------------------------------------------
 
-  def tag_end(name)
-
-    case name
-    when "richcontent"
-      @rt_machine.end_rich_content
-    when "body"
-      @rt_machine.end_body
-    when "ul"
-      @rt_machine.end_itemize
-    when "li"
-      @rt_machine.end_item
-    end
-
+  def end_body
+    @out.print("->8-\n")
+    super
   end
-  
+
   #----------------------------------------------------------------------------------------
   #
   #----------------------------------------------------------------------------------------
 
-  def text(text)
-    @rt_machine.text(text)
-  end 
+  def print_text
+    @out.write(@text)
+    @out.write("\n")
+    @text = nil
+  end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def print_begin_itemize
+    # @out.write("\\begin{itemize}")
+    # @out.write("\n")
+  end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def print_end_itemize
+    # @out.write("\\end{itemize}")
+    # @out.write("\n")
+  end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def print_item
+    # @out.write("\\item ")
+    @out.print("* ")
+  end
 
 end
 
-# ParseRichtext.new("example/equipe.mm", "example/equipe_rich.tex")
+
+##########################################################################################
+#
+##########################################################################################
+
+class RTLatexMachine < RichtextMachine
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def print_text
+    @out.write(@text)
+    @out.write("\n")
+    @text = nil
+  end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+  # Passing argument to an event
+  def text(text)
+    @text = text.strip
+    super
+  end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def print_begin_itemize
+    @out.write("\\begin{itemize}")
+    @out.write("\n")
+  end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def print_end_itemize
+    @out.write("\\end{itemize}")
+    @out.write("\n")
+  end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def print_item
+    @out.write("\\item ")
+  end
+
+end

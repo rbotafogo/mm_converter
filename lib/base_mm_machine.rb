@@ -22,13 +22,12 @@
 ##########################################################################################
 
 
+require 'state_machine'
+
 ##########################################################################################
 # This is a simple state machine to only read the root node of an MM and use its
 # attribute to configure the rest of the map's convertion
 ##########################################################################################
-
-require 'time'
-require 'state_machine'
 
 module BaseMMMachine
 
@@ -45,8 +44,6 @@ module BaseMMMachine
       rich_content
     when "attribute"
       new_attribute(value)
-    when "body"
-      new_body
     end
   end
 
@@ -63,10 +60,15 @@ module BaseMMMachine
       end_rich_content
     when "attribute"
       end_attribute
-    when "body"
-      end_body
     end
 
+  end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def new_text(text)
   end
 
   #----------------------------------------------------------------------------------------
@@ -80,6 +82,8 @@ module BaseMMMachine
       tag_start(name, attrs)
     when :tag_end
       tag_end(name)
+    when :new_text
+      new_text(name)
     else
       p "ooops error"
     end

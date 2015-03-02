@@ -21,7 +21,8 @@
 # ENHANCEMENTS, OR MODIFICATIONS.
 ##########################################################################################
 
-require_relative 'base_mm_machine'
+require 'base_mm_machine'
+require_relative 'richtext_machine'
 
 ##########################################################################################
 #
@@ -41,7 +42,7 @@ class MMMachine
 
   def initialize(input_file, output_dir, parser)
     output = output_dir + "/" + (File.basename(input_file, '.*') + ".tjp")
-    @out = File.open(output, 'w')
+    @out = File.open(output, 'w:UTF-8')
     @parser = parser
     @level = 0
     @attributes = Hash.new
@@ -74,9 +75,6 @@ class MMMachine
       transition :awaiting_node => :down_node
       transition [:down_node, :up_node, :leveled_node] => :down_node
       transition [:attributes, :still_more_attributes] => :down_node
-      transition :journalmode => :journal_start
-      transition :journal_start => :journal_entry
-      # transition :journal_entry => :journal_entry
     end
 
     # When receiving event :new_node, we need to move add one level in the tree.
@@ -85,7 +83,6 @@ class MMMachine
     # Only process a node the first time we get to it, i.e., when we are going down
     # the tree.
     after_transition :to => :down_node, :do => :process_node
-    after_transition :to => :journal_entry, :do => :process_journalentry
 
     #####################################################################################
     # What to do when we get an exit_node event
@@ -96,9 +93,6 @@ class MMMachine
         :still_more_attributes] => :up_node, if: :pos_level?
       transition [:down_node, :up_node, :leveled_node, :attribute,
         :still_more_attributes] => :awaiting_node, if: :zero_level?
-      transition :journal_entry => :journal_start, if: :journal?
-      transition :journal_entry => :up_node, if: :journal_ended?
-      transition :journal_start => :up_node
     end
 
     # When we exit a node, we reduce it's level on the tree
@@ -122,28 +116,10 @@ class MMMachine
     end
 
     #####################################################################################
-    # What to do when composing with another state_machine
-    #####################################################################################
-
-    event :compose do
-      transition all => :awaiting_node
-    end
-
-    #####################################################################################
     # Processing rich text
     #####################################################################################
     # Entering rich_content
     event :rich_content do
-    end
-
-    event :end_rich_content do
-    end
-
-    # Entering rich_content
-    event :new_body do
-    end
-
-    event :end_body do
     end
 
   end
@@ -152,10 +128,10 @@ class MMMachine
   #
   #----------------------------------------------------------------------------------------
 
-  # This is called twice when a having subclasses!!! Changes!!
   def new_node(value)
     @node_text = value["TEXT"]
     @node_value = value
+    # @level += 1
     super
   end
 
@@ -165,6 +141,7 @@ class MMMachine
 
   def exit_node
     # p "event exit_node"
+    # @level -= 1
     super
   end
 
@@ -188,6 +165,15 @@ class MMMachine
     super
   end
   
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def rich_content
+    p "richcontent"
+    super
+  end
+
   #----------------------------------------------------------------------------------------
   #
   #----------------------------------------------------------------------------------------
@@ -220,13 +206,12 @@ class MMMachine
     @level -= 1
   end
 
-
   #----------------------------------------------------------------------------------------
   #
   #----------------------------------------------------------------------------------------
   
   def process_attribute
-    p @attribute_value
+    # p @attribute_value
     @attributes[@attribute_value['NAME']] = @attribute_value['VALUE']
   end
 
@@ -235,7 +220,7 @@ class MMMachine
   #----------------------------------------------------------------------------------------
 
   def process_node
-    p @node_value
+    # p @node_value
   end
 
   #----------------------------------------------------------------------------------------
@@ -243,42 +228,8 @@ class MMMachine
   #----------------------------------------------------------------------------------------
 
   def process_exit_node
-    p "geting out of node"
-  end
-
-  #----------------------------------------------------------------------------------------
-  #
-  #----------------------------------------------------------------------------------------
-
-  def process_journal
-    # p "starting journal at level #{@level}"
-    @journal_level = @level
-  end
-
-  #----------------------------------------------------------------------------------------
-  #
-  #----------------------------------------------------------------------------------------
-
-  def process_journalentry
-    p "process journalentry"
-  end
-
-  #----------------------------------------------------------------------------------------
-  #
-  #----------------------------------------------------------------------------------------
-
-  def journal?
-    # p "checking journal at level: #{@level}"
-    @level > @journal_level
-  end
-
-  #----------------------------------------------------------------------------------------
-  #
-  #----------------------------------------------------------------------------------------
-
-  def journal_ended?
-    # p "checking journal ended at level: #{@level}"
-    !(journal?)
+    # p "geting out of node"
+    @out.print("}\n")
   end
 
 end

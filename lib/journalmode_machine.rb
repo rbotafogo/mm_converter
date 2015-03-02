@@ -21,6 +21,7 @@
 # ENHANCEMENTS, OR MODIFICATIONS.
 ##########################################################################################
 
+require 'base_mm_machine'
 
 ##########################################################################################
 #
@@ -70,9 +71,9 @@ class JournalmodeMachine
     #####################################################################################
 
     event :exit_node do
-      transition [:journal_entry, :attributes, :still_more_attributes] => 
+      transition [:journal_entry, :attributes, :still_more_attributes, :new_entry] => 
         :journal_finish, if: :journal_ended?
-      transition [:journal_entry, :attributes, :still_more_attributes] => 
+      transition [:journal_entry, :attributes, :still_more_attributes, :new_entry] => 
         :new_entry, if: :journal?
     end
 
@@ -102,16 +103,6 @@ class JournalmodeMachine
     event :rich_content do
     end
 
-    event :end_rich_content do
-    end
-
-    # Entering rich_content
-    event :new_body do
-    end
-
-    event :end_body do
-    end
-
   end
 
   #----------------------------------------------------------------------------------------
@@ -132,7 +123,6 @@ class JournalmodeMachine
   def exit_node
     # p "event exit_node"
     @level -= 1
-    p @level
     super
   end
 
@@ -145,6 +135,19 @@ class JournalmodeMachine
     # @out.write("\n")
     # @out.write("#{attrs['NAME']}, #{attrs['VALUE']}")
     super
+  end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def rich_content
+
+    @out.print("details ")
+    machine = RTMarkdownMachine.new(@out, @parser, self)
+    @parser.delete_observer(self)
+    @parser.add_new_observer(machine)
+
   end
 
   #----------------------------------------------------------------------------------------
@@ -183,7 +186,7 @@ class JournalmodeMachine
     date = journal_header[0]
     journal_header.shift
     headline = journal_header.join(" ")
-    @out.print("journalentry #{date} #{headline}{\n")
+    @out.print("journalentry #{date} \"#{headline}\"{\n")
   end
 
   #----------------------------------------------------------------------------------------

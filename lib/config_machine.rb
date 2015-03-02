@@ -95,13 +95,6 @@ class ConfigMachine
     event :end_rich_content do
     end
 
-    # Entering rich_content
-    event :new_body do
-    end
-
-    event :end_body do
-    end
-
   end
 
   #----------------------------------------------------------------------------------------

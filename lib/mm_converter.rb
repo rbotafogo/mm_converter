@@ -109,6 +109,15 @@ class ParseMM
     changed
     notify_observers(:tag_end, name, nil)
   end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+  
+  def text(text)
+    changed
+    notify_observers(:new_text, text, nil)
+  end
   
 end
 
@@ -148,5 +157,5 @@ class MMConverter
 
 end
 
-conv = MMConverter.new("../examples/projetos.mm")
-# conv = MMConverter.new("../../../../Embratel/Projetos/Business Security - Planejamento.mm")
+# conv = MMConverter.new("../examples/projetos.mm")
+conv = MMConverter.new("../../../../Embratel/Projetos/Business Security - Planejamento.mm")
