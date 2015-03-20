@@ -35,19 +35,23 @@ class MMMachine
   attr_reader :head
   attr_reader :attributes
   attr_reader :ids
+  attr_reader :base_dir
 
   #----------------------------------------------------------------------------------------
   #
   #----------------------------------------------------------------------------------------
 
-  def initialize(input_file, output_dir, parser)
-    output = output_dir + "/" + (File.basename(input_file, '.*') + ".tjp")
+  def initialize(input_file, output_dir, parser, extension = ".tjp")
+
+    @base_dir = File.expand_path File.dirname(input_file)
+    output = output_dir + "/" + File.basename(input_file, '.*') + extension
     @out = File.open(output, 'w:UTF-8')
     @parser = parser
     @level = 0
     @attributes = Hash.new
     @ids = Hash.new
     super()
+
   end
 
   #----------------------------------------------------------------------------------------
@@ -75,6 +79,11 @@ class MMMachine
       transition :awaiting_node => :down_node
       transition [:down_node, :up_node, :leveled_node] => :down_node
       transition [:attributes, :still_more_attributes] => :down_node
+      transition :supplement => :awaiting_node
+    end
+
+    event :supplement do
+      transition :awaiting_node => :supplement
     end
 
     # When receiving event :new_node, we need to move add one level in the tree.
@@ -98,6 +107,7 @@ class MMMachine
     # When we exit a node, we reduce it's level on the tree
     after_transition :on => :exit_node, :do => :down_level
     before_transition :on => :exit_node, :do => :process_exit_node
+    after_transition :to => :awaiting_node, :do => :close_machine
 
     #####################################################################################
     # What to do when receiving a new_attribute
@@ -172,6 +182,14 @@ class MMMachine
   def rich_content
     p "richcontent"
     super
+  end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def close_machine
+    p "Finished doing convertion"
   end
 
   #----------------------------------------------------------------------------------------

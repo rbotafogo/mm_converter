@@ -75,6 +75,30 @@ class TaskjugglerMachine < MMMachine
   #
   #----------------------------------------------------------------------------------------
 
+  def supplement(node_id)
+
+    @out.print("supplement task #{node_id} {\n")
+    super
+
+  end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+=begin
+  def exit_node
+
+    if (@attributes['complete'] == nil)
+      @out.print("complete 0\n")
+    end
+    super
+
+  end
+=end
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
   def header(head)
 
     attrs = head[2]
@@ -88,6 +112,10 @@ class TaskjugglerMachine < MMMachine
 
     includes = attrs['include']
     attrs.delete('include')
+
+    # store all include directives that need to go to the end of the file
+    @final_includes = attrs['final_include']
+    attrs.delete('final_include')
 
     # add all attributes "as is" onto the project
     attrs.each do |attr|
@@ -115,22 +143,21 @@ class TaskjugglerMachine < MMMachine
   def process_node
 
     text = @node_value['TEXT']
+    @node_id = make_id(text)
+    @out.print("task #{@node_id} \"#{text}\"{\n")
 
-    # make an id for the task.  Use the task text as base and concatenate each word with
-    # _ and remove any non-ascii character.
-    id = String.new
-    tokens = text.split(" ")
-    tokens.each_with_index do |token, i|
-      id << "_" if (i > 0)
-      id << token.downcase
-        .encode('us-ascii', :invalid => :replace, :replace => "")
-        .encode('us-ascii')
-      id.gsub!(/\W+/, '')
+    link = @node_value['LINK']
+    # parse link
+    if link
+      new_file = @base_dir + "/#{link}"
+      output_dir = File.expand_path File.dirname(new_file)
+      parser = ParseMM.new(new_file)
+      machine = TaskjugglerMachine.new(new_file, output_dir, parser, ".tji")
+      machine.supplement(@node_id)
+      parser.add_new_observer(machine)
+      parser.start
     end
-
-    @node_id = id
-    @out.print("task #{id} \"#{text}\"{\n")
-
+  
   end
 
   #----------------------------------------------------------------------------------------
@@ -151,6 +178,8 @@ class TaskjugglerMachine < MMMachine
       @out.print("limits {dailymax #{@attribute_value['VALUE']}}\n")
     when "ct_date"
       contract_date
+    when "project_end"
+      project_end
     else
       attr_name = @attribute_value['NAME']
       if (attr_name[0] == '!')
@@ -160,6 +189,22 @@ class TaskjugglerMachine < MMMachine
       end
       @out.print("#{attr_name} #{@attribute_value['VALUE']}\n")
     end
+    super
+
+  end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def close_machine
+    
+    # Include files in the include directive
+    @final_includes.each do |include_file|
+      @out.print("include \"#{include_file}\"\n")
+    end if @final_includes
+
+    p "Successfully converted Mind Map -- Thanks for using!"
 
   end
 
@@ -168,6 +213,29 @@ class TaskjugglerMachine < MMMachine
   #----------------------------------------------------------------------------------------
 
   private
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def make_id(text)
+
+    # make an id for the task.  Use the task text as base and concatenate each word with
+    # _ and remove any non-ascii character.
+    id = String.new
+    tokens = text.split(" ")
+    tokens.each_with_index do |token, i|
+      id << "_" if (i > 0)
+      id << token.downcase
+        .encode('us-ascii', :invalid => :replace, :replace => "")
+        .encode('us-ascii')
+      id.gsub!(/\W+/, '')
+      
+    end
+
+    id
+
+  end
 
   #----------------------------------------------------------------------------------------
   #
@@ -196,12 +264,25 @@ class TaskjugglerMachine < MMMachine
   end
 
   #----------------------------------------------------------------------------------------
-  # Title needs to be changed according to language
+  # When the project should be delivered according to contract
   #----------------------------------------------------------------------------------------
 
   def contract_date
 
     @out.print("task ct_date \"Dt. limite conforme contrato\"{\n")
+    @out.print("milestone\n")
+    @out.print("start #{@attribute_value['VALUE']}\n")
+    @out.print("}\n")
+
+  end
+
+  #----------------------------------------------------------------------------------------
+  # When the project should be delivered according to contract
+  #----------------------------------------------------------------------------------------
+
+  def project_end
+
+    @out.print("task project_end \"Final do projeto - apto para faturamento\"{\n")
     @out.print("milestone\n")
     @out.print("start #{@attribute_value['VALUE']}\n")
     @out.print("}\n")

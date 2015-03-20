@@ -132,7 +132,7 @@ class MMConverter
   # output_dir is the directory for output of the converted MM
   #----------------------------------------------------------------------------------------
 
-  attr_reader :input
+  attr_reader :input_file
   attr_reader :output_dir
   attr_reader :parser
 
@@ -158,4 +158,5 @@ class MMConverter
 end
 
 # conv = MMConverter.new("../examples/projetos.mm")
-conv = MMConverter.new("../../../../Embratel/Projetos/Business Security - Planejamento.mm")
+conv = MMConverter.new("../../../../Embratel/SNOC/Acompanhamento_Projetos/Business Security - Planejamento.mm")
+# conv = MMConverter.new("../../../../Embratel/Projetos/Rio 2016.mm")
