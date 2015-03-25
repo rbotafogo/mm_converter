@@ -65,9 +65,17 @@ class ConfigMachine
     end
 
     # When entering on state :first_mode, :header will print the header if there is one
-    after_transition :to => :first_node, :do => :process_first_node
     after_transition :to => :first_node, :do => :get_header
     after_transition :to => :end_config, :do => :config_parameters
+
+    #####################################################################################
+    # What to do when receiving an exit_node
+    #####################################################################################
+
+    event :exit_node do
+    end
+
+    after_transition :on => :exit_node, :do => :end_converter
 
     #####################################################################################
     # What to do when receiving a new_attribute
@@ -85,24 +93,43 @@ class ConfigMachine
       transition :first_node_attributes => :still_more_first_node_attributes
     end
 
-    #####################################################################################
-    # Processing rich text
-    #####################################################################################
-    # Entering rich_content
-    event :rich_content do
-    end
-
-    event :end_rich_content do
-    end
-
   end
 
   #----------------------------------------------------------------------------------------
   #
   #----------------------------------------------------------------------------------------
 
-  def process_first_node
-    # p @node_text
+  def new_node(value)
+    @node_value = value
+    @node_text = value["TEXT"]
+    super
+  end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def exit_node
+    # p "event exit_node"
+    super
+  end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def new_attribute(value)
+    @attribute_value = value
+    super
+  end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def end_attribute
+    # p "event end_attribute"
+    super
   end
 
   #----------------------------------------------------------------------------------------
@@ -149,37 +176,8 @@ class ConfigMachine
   #
   #----------------------------------------------------------------------------------------
 
-  def new_node(value)
-    @node_value = value
-    @node_text = value["TEXT"]
-    super
-  end
-
-  #----------------------------------------------------------------------------------------
-  #
-  #----------------------------------------------------------------------------------------
-
-  def exit_node
-    # p "event exit_node"
-    super
-  end
-
-  #----------------------------------------------------------------------------------------
-  #
-  #----------------------------------------------------------------------------------------
-
-  def new_attribute(value)
-    @attribute_value = value
-    super
-  end
-
-  #----------------------------------------------------------------------------------------
-  #
-  #----------------------------------------------------------------------------------------
-
-  def end_attribute
-    # p "event end_attribute"
-    super
+  def end_converter
+    @machine.close_machine
   end
 
 end

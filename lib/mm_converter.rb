@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# -*- Coding: utf-8 -*-
 
 ##########################################################################################
 # @author Rodrigo Botafogo
@@ -145,7 +145,6 @@ class MMConverter
     @input_file = input_file
     @output_dir = File.dirname(input_file)
     @parser = ParseMM.new(input_file)
-    # creating a single file, but later this should not be done here
 
     # Use config machine to read the root node of the Map and do the proper convertion
     # of the map.

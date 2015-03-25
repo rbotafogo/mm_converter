@@ -25,6 +25,23 @@ require_relative 'journalmode_machine'
 
 class TaskjugglerMachine < MMMachine
 
+  attr_reader :ids
+  attr_reader :mm_id_path
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def initialize(input_file, output_dir, parser, extension = ".tjp", mm_id_path = Array.new)
+
+    @final_includes = Array.new
+    @ids = Hash.new
+    @mm_id_path = mm_id_path
+
+    super(input_file, output_dir, parser, extension)
+
+  end
+
   #----------------------------------------------------------------------------------------
   # Event generated when the node title is "Journal" or "journal"
   #----------------------------------------------------------------------------------------
@@ -85,19 +102,6 @@ class TaskjugglerMachine < MMMachine
   #----------------------------------------------------------------------------------------
   #
   #----------------------------------------------------------------------------------------
-=begin
-  def exit_node
-
-    if (@attributes['complete'] == nil)
-      @out.print("complete 0\n")
-    end
-    super
-
-  end
-=end
-  #----------------------------------------------------------------------------------------
-  #
-  #----------------------------------------------------------------------------------------
 
   def header(head)
 
@@ -132,7 +136,9 @@ class TaskjugglerMachine < MMMachine
       @out.print("include \"#{include_file}\"\n")
     end
     
-    @out.print("task #{head[0]['ID']} \"#{head[0]['TEXT']}\" {\n")
+    id = make_id(head[0]['TEXT'])
+    # @mm_id_path << id
+    @out.print("task #{id} \"#{head[0]['TEXT']}\" {\n")
 
   end
 
@@ -146,18 +152,33 @@ class TaskjugglerMachine < MMMachine
     @node_id = make_id(text)
     @out.print("task #{@node_id} \"#{text}\"{\n")
 
+    # If node has a LINK attribute, then follow the link and parse the file
     link = @node_value['LINK']
-    # parse link
     if link
+      link.gsub!('%20', ' ')
       new_file = @base_dir + "/#{link}"
       output_dir = File.expand_path File.dirname(new_file)
       parser = ParseMM.new(new_file)
-      machine = TaskjugglerMachine.new(new_file, output_dir, parser, ".tji")
-      machine.supplement(@node_id)
+      machine = TaskjugglerMachine.new(new_file, output_dir, parser, ".tji", @mm_id_path.clone)
+      @final_includes.insert(0, "#{machine.filename}#{machine.extension}")
+      p "supplementing #{@mm_id_path.join(".")}"
+      machine.supplement(@mm_id_path.join("."))
       parser.add_new_observer(machine)
       parser.start
     end
   
+  end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
+  def process_exit_node
+
+    # p "geting out of node"
+    @out.print("}\n")
+    @mm_id_path.pop
+
   end
 
   #----------------------------------------------------------------------------------------
@@ -204,7 +225,7 @@ class TaskjugglerMachine < MMMachine
       @out.print("include \"#{include_file}\"\n")
     end if @final_includes
 
-    p "Successfully converted Mind Map -- Thanks for using!"
+    p "Successfully converted Mind Map in '#{@filename}#{@extension}'"
 
   end
 
@@ -233,6 +254,7 @@ class TaskjugglerMachine < MMMachine
       
     end
 
+    @mm_id_path << id
     id
 
   end

@@ -31,25 +31,32 @@ require_relative 'richtext_machine'
 class MMMachine
   include BaseMMMachine
   
+  attr_reader :filename
+  attr_reader :extension
+  attr_reader :base_dir
+  attr_reader :output_dir
+
   attr_reader :level
   attr_reader :head
   attr_reader :attributes
-  attr_reader :ids
-  attr_reader :base_dir
 
   #----------------------------------------------------------------------------------------
   #
   #----------------------------------------------------------------------------------------
 
-  def initialize(input_file, output_dir, parser, extension = ".tjp")
+  def initialize(input_file, output_dir, parser, extension = nil)
 
     @base_dir = File.expand_path File.dirname(input_file)
+    @filename = File.basename(input_file, '.*')
+    @extension = extension
+
     output = output_dir + "/" + File.basename(input_file, '.*') + extension
     @out = File.open(output, 'w:UTF-8')
     @parser = parser
+
     @level = 0
     @attributes = Hash.new
-    @ids = Hash.new
+
     super()
 
   end
@@ -85,6 +92,11 @@ class MMMachine
     event :supplement do
       transition :awaiting_node => :supplement
     end
+
+    # When starting a machine through a link, the first node of the map is not
+    # processed, so we need to down a level, for when a :new_node event is received
+    # this will be the first node processed with level = 0
+    after_transition :on => :supplement, :do => :down_level
 
     # When receiving event :new_node, we need to move add one level in the tree.
     after_transition :on => :new_node, :do => :up_level
@@ -247,7 +259,6 @@ class MMMachine
 
   def process_exit_node
     # p "geting out of node"
-    @out.print("}\n")
   end
 
 end
