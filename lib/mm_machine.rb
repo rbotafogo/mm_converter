@@ -263,5 +263,5 @@ class MMMachine
 
 end
 
-require_relative 'taskjuggler_machine'
-require_relative 'latex_machine'
+require_relative 'taskjuggler/taskjuggler_machine'
+require_relative 'latex/latex_machine'
