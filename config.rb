@@ -12,7 +12,10 @@ $ENV = 'cygwin'
 
 # Set development dependency: those are gems that are also in development and thus not
 # installed in the gem directory.  Need a way of accessing them
-$DEPEND=["MDArray"]
+$DVLP_DEPEND=["mm_converter"]
+
+# Set dependencies from other local gems provided in the vendor directory. 
+$VENDOR_DEPEND=["taskjuggler-3.5.0"]
 
 ##########################################################################################
 
@@ -45,7 +48,7 @@ def mklib(path, home_path = true)
     lib = path
   end
   
-  $LOAD_PATH << lib
+  $LOAD_PATH.insert(0, lib)
   
 end
 
@@ -123,15 +126,14 @@ end
 # Set dependencies
 #---------------------------------------------------------------------------------------
 
-def depend(name)
-  
-  dependency_dir = MMConverter.project_dir + "/" + name
+def vendor_depend(name)
+  dependency_dir = MMConverter.vendor_dir + "/" + name
   mklib(dependency_dir)
-  
 end
 
-# depends also on local taskjuggler
-# mklib(MMConverter.home_dir + "../vendor/taskjuggler-3.5.0")
+$VENDOR_DEPEND.each do |dep|
+  vendor_depend(dep)
+end if $VENDOR_DEPEND
 
 ##########################################################################################
 # If development
@@ -139,13 +141,20 @@ end
 
 if ($DVLP == true)
 
-  mklib(MMConverter.home_dir)
+  #---------------------------------------------------------------------------------------
+  # Set development dependencies
+  #---------------------------------------------------------------------------------------
   
+  def depend(name)
+    dependency_dir = MMConverter.project_dir + "/" + name
+    mklib(dependency_dir)
+  end
+
   # Add dependencies here
   # depend(<other_gems>)
-  $DEPEND.each do |dep|
+  $DVLP_DEPEND.each do |dep|
     depend(dep)
-  end if $DEPEND
+  end if $DVLP_DEPEND
 
   #----------------------------------------------------------------------------------------
   # If we need to test for coverage

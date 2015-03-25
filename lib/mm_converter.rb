@@ -25,7 +25,7 @@ require 'fileutils'
 require 'rexml/document'
 require 'observer'
 
-require 'config'
+require_relative '../config'
 require_relative 'config_machine'
 
 ##########################################################################################
@@ -157,5 +157,5 @@ class MMConverter
 end
 
 # conv = MMConverter.new("../examples/projetos.mm")
-conv = MMConverter.new("../../../../Embratel/SNOC/Acompanhamento_Projetos/Business Security - Planejamento.mm")
+# conv = MMConverter.new("../../../../Embratel/SNOC/Acompanhamento_Projetos/Business Security - Planejamento.mm")
 # conv = MMConverter.new("../../../../Embratel/Projetos/Rio 2016.mm")

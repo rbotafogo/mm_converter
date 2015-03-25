@@ -227,6 +227,8 @@ class TaskjugglerMachine < MMMachine
 
     p "Successfully converted Mind Map in '#{@filename}#{@extension}'"
 
+    @out.flush
+
   end
 
   #----------------------------------------------------------------------------------------
