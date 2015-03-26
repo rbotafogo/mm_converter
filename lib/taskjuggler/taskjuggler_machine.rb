@@ -27,6 +27,7 @@ class TaskjugglerMachine < MMMachine
 
   attr_reader :ids
   attr_reader :mm_id_path
+  attr_reader :flags
 
   #----------------------------------------------------------------------------------------
   #
@@ -37,6 +38,9 @@ class TaskjugglerMachine < MMMachine
     @final_includes = Array.new
     @ids = Hash.new
     @mm_id_path = mm_id_path
+
+    # array for storing all flags (icons) added to a node
+    @flags = Array.new
 
     super(input_file, output_dir, parser, extension)
 
@@ -92,6 +96,17 @@ class TaskjugglerMachine < MMMachine
   #
   #----------------------------------------------------------------------------------------
 
+  def new_icon(value)
+    # @out.print("flags #{value['BUILTIN'].gsub('-', '_')}\n")
+    @flags[@level] ||= Array.new
+    @flags[@level] << value['BUILTIN'].gsub('-', '_')
+    super
+  end
+
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+
   def supplement(node_id)
 
     @out.print("supplement task #{node_id} {\n")
@@ -113,8 +128,10 @@ class TaskjugglerMachine < MMMachine
     @out.print("project \"#{head[0]['TEXT']}\" #{attrs['start'][0]} +#{attrs['period'][0]} {\n")
     attrs.delete('start')
     attrs.delete('period')
+    
+    includes = ["#{MMConverter.taskjuggler_includes}/flags.tji"]
+    includes.concat(attrs['include'])
 
-    includes = attrs['include']
     attrs.delete('include')
 
     # store all include directives that need to go to the end of the file
@@ -176,6 +193,14 @@ class TaskjugglerMachine < MMMachine
   def process_exit_node
 
     # p "geting out of node"
+
+    # add flags to the end of the task specification, so that it only applies to the 
+    # task and not to the subtasks
+    @flags[@level].each do |flag|
+      @out.print("flags #{flag}\n")
+    end if @flags[@level]
+    @flags[@level].clear if @flags[@level]
+
     @out.print("}\n")
     @mm_id_path.pop
 

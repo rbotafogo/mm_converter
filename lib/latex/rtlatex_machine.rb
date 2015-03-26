@@ -21,77 +21,55 @@
 # ENHANCEMENTS, OR MODIFICATIONS.
 ##########################################################################################
 
-
-require 'state_machine'
-
 ##########################################################################################
-# This is a simple state machine to only read the root node of an MM and use its
-# attribute to configure the rest of the map's convertion
+#
 ##########################################################################################
 
-module BaseMMMachine
+class RTLatexMachine < RichtextMachine
 
   #----------------------------------------------------------------------------------------
   #
   #----------------------------------------------------------------------------------------
 
-  def tag_start(name, value)
+  def print_text
+    @out.write(@text)
+    @out.write("\n")
+    @text = nil
+  end
 
-    case name
-    when "node"
-      new_node(value)
-    when "richcontent"
-      rich_content
-    when "attribute"
-      new_attribute(value)
-    when "icon"
-      new_icon(value)
-    end
+  #----------------------------------------------------------------------------------------
+  #
+  #----------------------------------------------------------------------------------------
+  # Passing argument to an event
+  def text(text)
+    @text = text.strip
+    super
   end
 
   #----------------------------------------------------------------------------------------
   #
   #----------------------------------------------------------------------------------------
 
-  def tag_end(name)
-
-    case name
-    when "node"
-      exit_node
-    when "richcontent"
-      end_rich_content
-    when "attribute"
-      end_attribute
-    when "icon"
-      end_icon
-    end
-
+  def print_begin_itemize
+    @out.write("\\begin{itemize}")
+    @out.write("\n")
   end
 
   #----------------------------------------------------------------------------------------
   #
   #----------------------------------------------------------------------------------------
 
-  def new_text(text)
+  def print_end_itemize
+    @out.write("\\end{itemize}")
+    @out.write("\n")
   end
 
   #----------------------------------------------------------------------------------------
   #
   #----------------------------------------------------------------------------------------
 
-  def update(type, name, attrs)
-
-    case type
-    when :tag_start
-      tag_start(name, attrs)
-    when :tag_end
-      tag_end(name)
-    when :new_text
-      new_text(name)
-    else
-      p "ooops error"
-    end
-
+  def print_item
+    @out.write("\\item ")
   end
 
 end

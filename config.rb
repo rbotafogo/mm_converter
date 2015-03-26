@@ -97,6 +97,8 @@ class MMConverter
   @target_dir = MMConverter.home_dir + "/target"
   @test_dir = MMConverter.home_dir + "/test"
   @vendor_dir = MMConverter.home_dir + "/vendor"
+  @taskjuggler_includes = MMConverter.home_dir + "/taskjuggler_includes"
+  @latex_templates = MMConverter.home_dir + "/latex_templates"
   
   class << self
     attr_reader :project_dir
@@ -106,6 +108,8 @@ class MMConverter
     attr_reader :target_dir
     attr_reader :test_dir
     attr_reader :vendor_dir
+    attr_reader :taskjuggler_includes
+    attr_reader :latex_templates
   end
 
   @build_dir = MMConverter.src_dir + "/build"
