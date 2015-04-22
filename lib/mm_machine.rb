@@ -89,21 +89,24 @@ class MMMachine
       transition :supplement => :awaiting_node
     end
 
+    # Only process a node the first time we get to it, i.e., when we are going down
+    # the tree.
+    after_transition :to => :down_node, :do => :process_node
+
+    #####################################################################################
+    # What to do when we get a supplement event.  Supplement occurs ewen starting a 
+    # machine through a link.  The first node of the linked map is not processed, and is
+    # considered as the same node from which it was linked.
+    #####################################################################################
+
     event :supplement do
       transition :awaiting_node => :supplement
     end
 
-    # When starting a machine through a link, the first node of the map is not
-    # processed, so we need to down a level, for when a :new_node event is received
-    # this will be the first node processed with level = 0
+    # Need to down a level when receiving a supplement event, since the first node will
+    # be thrown away and when a :new_node event is received this will be the first node 
+    # processed with level = 0
     after_transition :on => :supplement, :do => :down_level
-
-    # When receiving event :new_node, we need to move add one level in the tree.
-    after_transition :on => :new_node, :do => :up_level
-
-    # Only process a node the first time we get to it, i.e., when we are going down
-    # the tree.
-    after_transition :to => :down_node, :do => :process_node
 
     #####################################################################################
     # What to do when we get an exit_node event
@@ -111,15 +114,12 @@ class MMMachine
 
     event :exit_node do
       transition [:down_node, :up_node, :leveled_node, :attribute, 
-        :still_more_attributes] => :up_node, if: :pos_level?
-      transition [:down_node, :up_node, :leveled_node, :attribute,
-        :still_more_attributes] => :awaiting_node, if: :zero_level?
+        :still_more_attributes] => :up_node
     end
 
     # When we exit a node, we reduce it's level on the tree
-    after_transition :on => :exit_node, :do => :down_level
     before_transition :on => :exit_node, :do => :process_exit_node
-    after_transition :to => :awaiting_node, :do => :close_machine
+    after_transition :on => :exit_node, :do => :down_level
 
     #####################################################################################
     # What to do when receiving a new_attribute
@@ -132,6 +132,10 @@ class MMMachine
     end
 
     after_transition :to => :attributes, :do => :process_attribute
+
+    #####################################################################################
+    # What to do when receiving a end_attribute
+    #####################################################################################
 
     event :end_attribute do
       transition :attributes => :still_more_attributes
@@ -151,9 +155,10 @@ class MMMachine
   #----------------------------------------------------------------------------------------
 
   def new_node(value)
+    # p "new_node"
     @node_text = value["TEXT"]
     @node_value = value
-    # @level += 1
+    @level += 1
     super
   end
 
@@ -220,30 +225,6 @@ class MMMachine
 
   def close_machine
     p "Finished doing convertion"
-  end
-
-  #----------------------------------------------------------------------------------------
-  #
-  #----------------------------------------------------------------------------------------
-
-  def pos_level?
-    @level > 0
-  end
- 
-  #----------------------------------------------------------------------------------------
-  #
-  #----------------------------------------------------------------------------------------
-
-  def zero_level?
-    @level == 0
-  end
-
-  #----------------------------------------------------------------------------------------
-  #
-  #----------------------------------------------------------------------------------------
-
-  def up_level
-    @level += 1
   end
 
   #----------------------------------------------------------------------------------------

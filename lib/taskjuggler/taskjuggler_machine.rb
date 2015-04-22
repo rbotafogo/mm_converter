@@ -204,6 +204,9 @@ class TaskjugglerMachine < MMMachine
     @out.print("}\n")
     @mm_id_path.pop
 
+    # when the @level == 0 if reach the end of processing
+    close_machine if @level == 0
+
   end
 
   #----------------------------------------------------------------------------------------
@@ -222,6 +225,8 @@ class TaskjugglerMachine < MMMachine
       @out.print("limits {dailymin #{@attribute_value['VALUE']}}\n")
     when "dailymax"
       @out.print("limits {dailymax #{@attribute_value['VALUE']}}\n")
+    when "ct_sign"
+      sign_date
     when "ct_date"
       contract_date
     when "project_end"
@@ -310,6 +315,19 @@ class TaskjugglerMachine < MMMachine
     end
     tokens.shift
     new_dep = "depends " + "!" * count + new_dep + " " + tokens.join(" ") + "\n"
+  end
+
+  #----------------------------------------------------------------------------------------
+  # When the contract was signed
+  #----------------------------------------------------------------------------------------
+
+  def sign_date
+
+    @out.print("task ct_sign \"Dt. de assinatura do contrato\"{\n")
+    @out.print("milestone\n")
+    @out.print("start #{@attribute_value['VALUE']}\n")
+    @out.print("}\n")
+
   end
 
   #----------------------------------------------------------------------------------------

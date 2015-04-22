@@ -7,9 +7,6 @@ require 'rbconfig'
 # set to true if development environment
 $DVLP = true
 
-# Set to 'cygwin' when in cygwin
-$ENV = 'cygwin'
-
 # Set development dependency: those are gems that are also in development and thus not
 # installed in the gem directory.  Need a way of accessing them
 $DVLP_DEPEND=["mm_converter"]
@@ -56,7 +53,7 @@ end
 # Prepare environment to work inside Cygwin
 ##########################################################################################
 
-if $ENV == 'cygwin'
+if @platform == 'windows-cygwin'
   
   #---------------------------------------------------------------------------------------
   # Return the cygpath of a path

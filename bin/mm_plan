@@ -2,13 +2,25 @@
 
 require_relative '../lib/mm_converter'
 
+
+if @platform.include?("java")
+  # By default JRuby allocates 512M of heap memory.  This can be changed by setting
+  # JRUBY_OPTS environment variable.  To change the Java head size use to 712: 
+  ENV["JRUBY_OPTS"] = "-J-Xmx712m"
+  # This environment change will only be applied to the system call to tj3 bellow. 
+  # The converter is running with a 512 head size, which is enough.
+end
+  
 # convert the given mind map
 conv = MMConverter.new(ARGV[0])
 
-# prepare for 
+# Fix arguments to pass to tj3.  The extension name needs to be changed from .mm to
+# .tjp.  Leave the other arguments unchanged.
 base_dir = File.expand_path File.dirname(ARGV[0])
 filename = File.basename(ARGV[0], '.*')
-ARGV[0] = base_dir + "/#{filename}.tjp"
+ARGV[0] = "'#{base_dir}/#{filename}.tjp'"
+args = ARGV.join(" ")
 
-# Run taskjuggler on the converted output
-require 'tj3'
+# Call tj3 with the given args
+system("tj3 #{args}")
+
